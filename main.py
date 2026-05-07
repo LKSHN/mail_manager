@@ -1,18 +1,14 @@
 # ─── ENTRY POINT ──────────────────────────────────────────────────────────────
-# Launches the PyWebView window with the Gmail API backend.
-#
-# BACKEND NOTE:
-#   pywebview on Windows normally uses WinForms (via pythonnet).
-#   pythonnet has no pre-built wheel for Python 3.14, so we force the Qt backend
-#   (PySide6) by setting PYWEBVIEW_GUI before importing webview.
-
 import os
-os.environ['PYWEBVIEW_GUI'] = 'qt'   # use PySide6 WebEngine instead of WinForms
+os.environ['PYWEBVIEW_GUI'] = 'qt'   # use PySide6; pythonnet has no Python 3.14 wheel
 
+import db
 import webview
 from api import GmailAPI
 
 if __name__ == "__main__":
+    db.init_db()   # create tables on first run, no-op if already exist
+
     api     = GmailAPI()
     ui_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "ui", "index.html"))
 

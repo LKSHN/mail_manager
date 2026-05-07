@@ -185,6 +185,56 @@ a { color: var(--accent); }
 }
 .tool-btn:hover { background: var(--hover); color: var(--text); }
 
+/* Sync status bar */
+#sync-bar {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--subtle);
+}
+#sync-bar #btn-sync-now {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--subtle);
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s, background 0.12s;
+}
+#sync-bar #btn-sync-now:hover { color: var(--text); background: var(--hover); }
+#sync-icon { font-size: 11px; }
+#sync-icon.spinning {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+/* Progress bar */
+#progress-wrap {
+  padding: 0 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+#progress-label {
+  font-size: 10px;
+  color: var(--subtle);
+  text-align: right;
+}
+
 /* ─── LIST PANEL ───────────────────────────────────────────────────────────── */
 #list-panel {
   flex: 1;

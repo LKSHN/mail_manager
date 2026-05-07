@@ -172,25 +172,32 @@ const App = {
   async init() {
     const r = await api('connect');
     if (!r.ok) {
-      $('loader-text') && ($('loader-text').textContent = '❌ ' + r.error);
+      const lt = $('loader-text');
+      if (lt) lt.textContent = 'Connection error: ' + r.error;
       return;
     }
 
     // Update account badge
-    const { name, email } = parseFrom(r.email);
     const emailStr = r.email || '';
     $('sidebar-email').textContent = emailStr;
     setAvatar($('sidebar-avatar'), emailStr.split('@')[0]);
 
-    // Load labels & messages
+    // Load labels
     await this.loadLabels();
-    await this.loadMessages(State.query);
 
-    // Show app
+    // Show app immediately (messages load from cache below)
     hide('loading-screen');
     show('app');
-
     this._bindStaticEvents();
+
+    // Load messages — comes from cache instantly if DB is populated
+    await this.loadMessages(State.query);
+
+    // Seed sync status from last known sync time
+    const st = await api('get_sync_status');
+    if (st.ok && st.last_sync) {
+      this._setSyncText('Synced ' + _ago(st.last_sync));
+    }
   },
 
   // ── Load labels ───────────────────────────────────────────────────────────
@@ -214,9 +221,8 @@ const App = {
 
   // ── Load messages ─────────────────────────────────────────────────────────
   async loadMessages(query) {
-    State.query = query;
+    State.query   = query;
     State.loading = true;
-    this.renderMessages([]);   // clear list while loading
 
     const r = await api('get_messages', query);
     State.loading = false;
@@ -225,6 +231,54 @@ const App = {
 
     State.messages = r.messages;
     this.renderMessages(r.messages);
+  },
+
+  // ── Sync events (called from Python via evaluate_js) ──────────────────────
+  onSyncEvent(event, data) {
+    const icon = $('sync-icon');
+    const text = $('sync-text');
+
+    if (event === 'syncing') {
+      icon.className = 'spinning';
+      const labels = { full: 'Initial sync…', deep: 'Deep sync…', incremental: 'Syncing…' };
+      text.textContent = labels[data.mode] || 'Syncing…';
+      // Show progress bar only for full / deep (not incremental)
+      if (data.mode !== 'incremental') {
+        $('progress-fill').style.width = '0%';
+        $('progress-label').textContent = '';
+        show('progress-wrap');
+      }
+
+    } else if (event === 'progress') {
+      const pct = data.total > 0 ? Math.min(100, Math.round((data.done / data.total) * 100)) : 0;
+      $('progress-fill').style.width = pct + '%';
+      $('progress-label').textContent = `${data.done.toLocaleString()} / ${data.total.toLocaleString()}`;
+
+    } else if (event === 'synced') {
+      icon.className = '';
+      icon.textContent = '✓';
+      this._setSyncText('Just now');
+      hide('progress-wrap');
+
+      // Refresh the list when new data arrives
+      const changed = (data.changes ?? 0) + (data.count ?? 0);
+      if (changed > 0) this.loadMessages(State.query);
+
+    } else if (event === 'progress_hide') {
+      hide('progress-wrap');
+
+    } else if (event === 'sync_error') {
+      icon.className = '';
+      icon.textContent = '!';
+      text.textContent = 'Sync error';
+      hide('progress-wrap');
+      toast('Sync error: ' + (data.error || 'unknown'), 'error');
+    }
+  },
+
+  _setSyncText(str) {
+    $('sync-text').textContent = str;
+    $('sync-icon').textContent = '✓';
   },
 
   // ── Render email list ──────────────────────────────────────────────────────
@@ -678,8 +732,9 @@ const App = {
     });
 
     // Toolbar
-    $('btn-refresh').onclick = () => this.loadMessages(State.query);
-    $('btn-search') .onclick = () => this.search();
+    $('btn-refresh')  .onclick = () => this.loadMessages(State.query);
+    $('btn-sync-now') .onclick = () => api('sync_now');
+    $('btn-search')   .onclick = () => this.search();
     $('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') this.search(); });
     $('btn-compose') .onclick = () => this.openCompose();
 
@@ -739,6 +794,16 @@ function esc(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Turn a UTC ISO timestamp into a human-readable "X ago" string. */
+function _ago(isoStr) {
+  if (!isoStr) return '';
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+  if (diff < 60)   return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
