@@ -1,5 +1,14 @@
+# ─── Gmail API ────────────────────────────────────────────────────────────────
 google-auth>=2.0.0
 google-auth-oauthlib>=1.0.0
 google-auth-httplib2>=0.1.0
 google-api-python-client>=2.0.0
-tkinterweb>=3.0.0
+
+# ─── Desktop UI ───────────────────────────────────────────────────────────────
+# pywebview uses the Qt backend (PySide6) because pythonnet has no wheel for Python 3.14.
+# Set PYWEBVIEW_GUI=qt (already done in main.py) to avoid the WinForms/pythonnet backend.
+pywebview>=6.0.0
+PySide6>=6.5.0       # Qt WebEngine renderer for pywebview
+qtpy>=2.0.0          # Qt abstraction layer required by pywebview's Qt backend
+bottle               # pywebview internal HTTP server
+proxy_tools          # pywebview internal utility
